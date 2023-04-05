@@ -11,6 +11,9 @@ then sent back to the original sender.
 The same rules are applied until one player reaches the number 1 (after the division).
 See the example below.
 
+## The architecture
+![alt text](https://github.com/Shuhd/game-of-three/blob/main/game-of-three-architecture.png?raw=true)
+
 ## Installation
 
 ```bash

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game of Three</title>
+    <script src='https://cdn.jsdelivr.net/npm/vue/dist/vue.js'></script>
+    <script src='http://localhost:3000/socket.io/socket.io.js'></script>
+</head>
+<body>
+    <div id="vue-app">
+        <h1>{{ title }}</h1>
+        <form>
+            <input v-model.number="numberGivenByPlayer" min="2" step="1"  pattern=" 0+\.[0-9]*[1-9][0-9]*$" onkeypress="return event.charCode >= 48 && event.charCode <= 57" type="number" :disabled="isDisabled"/>
+            <button v-show="isAllowedToPlay" @click.prevent="calculateNumber(-1)">-1</button>
+            <button v-show="isAllowedToPlay" @click.prevent="calculateNumber(0)">0</button>
+            <button v-show="isAllowedToPlay" @click.prevent="calculateNumber(1)">1</button>
+
+            <div v-if="!isDisabled">
+                <button :disabled="!numberGivenByPlayer" @click="sendIntialNumber()">Send Initial Number</button>
+            </div>
+        </form>
+        <div>
+            <p>{{ message }}</p>
+        </div>
+    </div>
+    <script>
+        let app = new Vue({
+            el: '#vue-app',
+            data: {
+                title: '',
+                numberGivenByPlayer: null,
+                socket: null,
+                isDisabled: true,
+                message: '',
+                playerId: null,
+                isAllowedToPlay: false,
+            },
+            computed: {
+            },
+            methods: {
+                calculateNumber(numberToAdd) {
+                    const msg = {
+                        playerId: this.playerId,
+                        message: '',
+                        number: numberToAdd,
+                    }
+                    this.socket.emit('calculateNumber', msg);
+                },
+                receiveMessage(msg) {
+                    this.message = msg;
+                },
+                allowPlayerToPlay(data) {
+                    const msg = data.message;
+                    this.isAllowedToPlay = data.playerId === this.playerId; 
+                    
+                    this.message = this.isAllowedToPlay ? `${msg}   it is your turn` : `${msg}   Waiting for other player to play`;
+                    this.numberGivenByPlayer = data.number;
+                    
+                },
+                displayNumber(data) {
+                    this.numberGivenByPlayer = data.number;
+                    this.message = data.msg;
+                },
+                displayWinner(msg) {
+                    this.message = msg;
+                    this.isAllowedToPlay = false;
+                },
+                setPlayer(data){
+                    this.title = data.message;
+                    this.playerId = data.playerId;
+                    this.message = data.message;
+                },
+                startGame(msg){
+                    this.isDisabled = false;
+                    this.message = msg;
+                },
+                sendIntialNumber() {
+                    if(this.numberGivenByPlayer) {
+                        this.socket.emit('initiateNumber', Number(this.numberGivenByPlayer));
+                        this.isDisabled = true;
+                    }
+                }
+            },
+            created() {
+                this.socket = io('http://localhost:3000');
+                this.socket.on('setPlayer', (data) => {
+                    this.setPlayer(data);
+                })
+                this.socket.on('startGame', (msg) => {
+                    this.startGame(msg);
+                })
+                this.socket.on('message', (msg) => {
+                    this.receiveMessage(msg);
+                })
+                this.socket.on('play', (data) => {
+                    this.allowPlayerToPlay(data);
+                })
+                this.socket.on('displayNumber', (msg) => {
+                    this.displayNumber(msg);
+                })
+                this.socket.on('displayWinner', (msg) => {
+                    this.displayWinner(msg);
+                })
+            }
+        });
+    </script>
+</body>
+</html>
